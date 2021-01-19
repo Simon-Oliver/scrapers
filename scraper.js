@@ -1,16 +1,34 @@
-const cheerio = require('cheerio');
 const fetch = require('node-fetch');
 const fs = require('fs');
 const puppeteer = require("puppeteer");
-//const emojiStrip = require("emoji-strip")
+const emojiStrip = require("emoji-strip")
+const request = require('request');
+const https = require("https")
 
-var donwloadVideo = async (url, name) => {
+const urls = [
+    'https://gronda.eu/story/how-to-raspberry-dry-chilli-j7',
+    'https://gronda.eu/story/how-to-mango-dahl-with-coconut'
+]
+
+async function download(url, dest) {
     const response = await fetch(url);
     const buffer = await response.buffer();
-    fs.writeFile(`./videos/${name}.mp4`, buffer, () =>
-        console.log('finished downloading video!'));
+    fs.writeFile(dest, buffer, () =>
+        console.log('finished downloading!'));
 }
 
+var saveRecipes = async (data) => {
+    const text = `
+    # ${data.title}
+
+    ${data.content}
+
+    #_privat/Cooking/Recipe
+    `
+    const name = emojiStrip(data.title).trim().replace(" ", "_").toLocaleLowerCase()
+    fs.writeFile(`./recipes/${name}.md`, text, () =>
+        console.log('finished downloading recipe!'));
+}
 
 const scrape = async (url, cb) => {
     // Launch the browser
@@ -26,19 +44,28 @@ const scrape = async (url, cb) => {
         const videUrl = document.querySelector("video source").getAttribute("src")
         const content = document.querySelector("figcaption div + p").textContent
         const fileTitle = title.replace(" ", "_")
-        donwloadVideo(videUrl, title)
 
         return {
             title, videUrl, content, fileTitle, title
         };
     });
 
+    const videoUrl = emojiStrip(data.videUrl).trim().replace(" ", "_").toLocaleLowerCase()
+    const name = emojiStrip(data.title).trim().replace(" ", "_").toLocaleLowerCase()
+
+    download(data.videUrl, `./videos/${name}.mp4`)
+    // await pDownload(videoUrl, `./videos/${name}.mp4`)
+    // await saveRecipes(data)
     // Here we can do anything with this data
-    console.log(data)
     // We close the browser
     await browser.close();
 }
 
-scrape("https://gronda.eu/story/applefoamdku");
 
+
+
+
+
+
+const data = Promise.all(urls.map((e) => scrape(e)))
 // donwloadVideo("https://gronda.eu/media/5gnJ2tKAVN/stories/1vd.mp4")
