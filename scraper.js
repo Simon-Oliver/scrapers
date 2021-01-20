@@ -5,10 +5,18 @@ const emojiStrip = require("emoji-strip")
 const request = require('request');
 const https = require("https")
 
-const urls = [
-    'https://gronda.eu/story/how-to-raspberry-dry-chilli-j7',
-    'https://gronda.eu/story/how-to-mango-dahl-with-coconut'
-]
+const { isValidHttpUrl } = require("./utils/helper.js")
+
+
+
+const urls = []
+
+process.argv.slice(2).forEach(e => {
+    if (isValidHttpUrl(e)) {
+        urls.push(e)
+    }
+})
+
 
 async function download(url, dest) {
     const response = await fetch(url);
@@ -40,22 +48,33 @@ const scrape = async (url, cb) => {
 
     // Here we can select elements from the web page
     const data = await page.evaluate(() => {
-        const title = document.querySelector("h1").innerText;
-        const videUrl = document.querySelector("video source").getAttribute("src")
-        const content = document.querySelector("figcaption div + p").textContent
-        const fileTitle = title.replace(" ", "_")
+        try {
+            const title = document.querySelector("h1").innerText ? document.querySelector("h1").innerText : " ";
+            const videUrl = document.querySelector("video source").getAttribute("src") != null ? document.querySelector("video source").getAttribute("src") : " "
+            const content = document.querySelector("figcaption div + p").textContent ? document.querySelector("figcaption div + p").textContent : " "
+            const fileTitle = title.replace(" ", "_") ? title.replace(" ", "_") : ""
 
-        return {
-            title, videUrl, content, fileTitle, title
-        };
+            return {
+                title, videUrl, content, fileTitle, title
+            };
+
+        } catch (error) {
+            console.log(error)
+        }
     });
 
-    const videoUrl = emojiStrip(data.videUrl).trim().replace(" ", "_").toLocaleLowerCase()
-    const name = emojiStrip(data.title).trim().replace(" ", "_").toLocaleLowerCase()
+    let name
+    if (data) {
+        name = data.title != undefined ? emojiStrip(data.title).trim().replace(" ", "_").toLocaleLowerCase() : " "
+        download(data.videUrl, `./videos/${name}.mp4`)
+        // await pDownload(videoUrl, `./videos/${name}.mp4`)
+        await saveRecipes(data)
+    } else {
+        console.log(url)
+    }
 
-    download(data.videUrl, `./videos/${name}.mp4`)
-    // await pDownload(videoUrl, `./videos/${name}.mp4`)
-    // await saveRecipes(data)
+
+
     // Here we can do anything with this data
     // We close the browser
     await browser.close();
